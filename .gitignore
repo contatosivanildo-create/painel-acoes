@@ -1,0 +1,19 @@
+# Banco de dados local com usuários, senhas e carteiras — nunca compartilhar.
+data/
+*.db
+
+# Arquivo de segredos (login do primeiro administrador).
+.streamlit/secrets.toml
+
+# Variáveis de ambiente com valores reais (o servidor usa o painel do Railway).
+.env
+.env.*
+!.env.example
+
+# Arquivos temporários do Python.
+__pycache__/
+*.pyc
+
+# Ambientes virtuais, se você usar.
+.venv/
+venv/

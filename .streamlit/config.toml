@@ -1,0 +1,18 @@
+# Configurações do Streamlit para este app.
+
+[browser]
+# Não enviar estatísticas de uso.
+gatherUsageStats = false
+
+[theme]
+# Tema visual limpo e profissional (claro).
+base = "light"
+primaryColor = "#2563EB"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1F5F9"
+textColor = "#0F172A"
+font = "sans serif"
+
+[server]
+# Não abrir uma janela de estatísticas ao rodar.
+headless = false
