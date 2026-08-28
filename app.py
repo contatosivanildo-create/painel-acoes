@@ -13,7 +13,41 @@ O que ele faz, em ordem:
 Para rodar:  streamlit run app.py
 """
 
+import os
+import sys
+
 import streamlit as st
+
+
+# ---------------------------------------------------------------------------
+# Rede de segurança para quando o app roda num servidor (ex.: Railway)
+# ---------------------------------------------------------------------------
+# Este app SÓ funciona quando iniciado com  "streamlit run app.py".
+# Alguns servidores, ao reiniciar sozinhos, tentam rodar  "python app.py"  por
+# engano — e aí o app entraria num loop de erro. Se percebermos que não há um
+# runtime do Streamlit ativo, reiniciamos o processo do jeito certo.
+def _garantir_streamlit_run() -> None:
+    try:
+        from streamlit.runtime import exists as _runtime_exists
+    except Exception:
+        return
+    if _runtime_exists():
+        return  # já estamos rodando sob "streamlit run" — tudo certo.
+
+    porta = os.environ.get("PORT", "8501")
+    sys.argv = [
+        "streamlit", "run", os.path.abspath(__file__),
+        "--server.port", porta,
+        "--server.address", "0.0.0.0",
+        "--server.headless", "true",
+        "--browser.gatherUsageStats", "false",
+    ]
+    from streamlit.web.cli import main as _streamlit_main
+
+    sys.exit(_streamlit_main())
+
+
+_garantir_streamlit_run()
 
 import auth
 import database
