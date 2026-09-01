@@ -84,6 +84,8 @@ Fluxo de uma requisição (arquivo `app.py`, de cima para baixo):
 | `market_data.py`   | Busca no Yahoo Finance com cache de 15 min. Devolve `ResultadoMercado` (preços + não encontrados + erro de conexão). |
 | `views.py`         | Desenho das páginas: Ações, Minha carteira, Minha conta, Administração. Toda a UI pós-login. |
 | `smoke_test.py`    | Teste da lógica sem navegador. Usa um banco temporário via `STOCKS_APP_DB`. |
+| `analise_ia.py`    | "Análise do Dia": monta o resumo numérico da carteira e chama a API da Anthropic (Claude Haiku 4.5) com streaming. Toda falha vira `AnaliseIndisponivel` → aviso amigável. |
+| `agente_analise_instrucoes.md` | Instruções de sistema do agente (texto puro, editável sem tocar no código). |
 | `.streamlit/config.toml`  | Tema visual e opções do Streamlit.                             |
 | `.streamlit/secrets.toml` | Segredos locais (não versionado).                              |
 
@@ -195,3 +197,47 @@ versionado.
 `market_data` já degrada com mensagem amigável (`erro_de_conexao`). Se acontecer
 de forma persistente no servidor, avaliar: sessão HTTP com `User-Agent` de
 navegador, retry/backoff, ou trocar de fonte de dados.
+
+---
+
+## 9. Análise do Dia (IA — API da Anthropic)
+
+Botão flutuante (`position: fixed`, canto inferior direito) na página Ações →
+`@st.dialog` que roda `analise_ia.gerar_analise` e mostra o texto via
+`st.write_stream` (efeito de digitação).
+
+### Fluxo
+
+1. `views._render_analise_do_dia` injeta o CSS (classe `st-key-botao_analise_dia`,
+   criada pelo `st.container(key=...)`), desenha o botão e, ao clicar, guarda o
+   necessário em `st.session_state["analise_entrada"]` e abre a janela.
+2. `views._janela_analise_do_dia` (dialog): reaproveita `st.session_state
+   ["analise_guardada"]` se for a **mesma** `(user_id, tickers, período)` e tiver
+   < 15 min; senão chama `analise_ia.montar_resumo` + `analise_ia.gerar_analise`.
+3. `montar_resumo` recebe o `precos` já renomeado (colunas = código sem `.SA`) e a
+   lista `nao_encontrados`. Calcula por ação: preço/data, variação no período,
+   mín/máx com datas, distância da máxima, variação 5 pregões, tendência
+   (MM20 × MM50, exige ≥ 50 pregões), volatilidade (desvio-padrão dos retornos
+   diários). **A IA recebe só esse texto — nunca DataFrames nem gráficos.**
+4. `gerar_analise(resumo, estado)` — gerador. `estado["ok"]` vira `True` só no
+   sucesso; a tela só guarda no cache de 15 min quando `estado["ok"]`.
+
+### Modelo e chave
+
+- Modelo: `MODELO_IA = "claude-haiku-4-5"` (o mais barato: US$ 1/US$ 5 por Mtok).
+  Sem `thinking`/`effort` (Haiku 4.5 não usa adaptive thinking).
+- Chave: `analise_ia._ler_chave()` → `st.secrets["ANTHROPIC_API_KEY"]` e depois
+  `os.environ["ANTHROPIC_API_KEY"]` (mesmo padrão do `auth._ler_secrets`).
+  Local: `.streamlit/secrets.toml`. Servidor: variável no Railway. Nunca no código.
+
+### Erros → mensagem amigável (constantes `_MSG_*` em `analise_ia.py`)
+
+`AuthenticationError`/`PermissionDeniedError` → chave inválida;
+`BadRequestError` com "credit"/"balance"/"quota" → sem crédito;
+`RateLimitError` → ocupado; `APIConnectionError` → sem internet;
+demais `APIStatusError`/exceções → indisponível. Nada estoura para a tela.
+
+### Dependências novas
+
+`anthropic` (SDK) e `tzdata` (fuso `America/Sao_Paulo` para carimbar a hora no
+container Linux). Em `requirements.txt` com versão fixada.

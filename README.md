@@ -239,6 +239,62 @@ computador ligado. A publicação usa dois serviços gratuitos:
 
 ---
 
+## Análise do Dia (inteligência artificial)
+
+Na página **Ações** há um botão redondo no **canto inferior direito da tela**,
+sempre visível, chamado **"Análise do Dia"**. Ao clicar, abre uma janela onde um
+**analista de IA** escreve, ao vivo, um comentário didático sobre a sua carteira
+**no período selecionado** (1 mês, 3 meses, ..., máximo).
+
+- O app monta um **resumo só com números** de cada ação (preço e data, variação
+  no período, mínima/máxima com datas, distância da máxima, variação nos últimos
+  5 pregões, tendência de 20 x 50 dias e volatilidade) e manda **apenas isso**
+  para a IA. Ela **não** recebe os gráficos e é instruída a **nunca inventar**
+  notícias, balanços ou previsões.
+- O texto traz um parágrafo de visão geral, **"Vale olhar com atenção"** (até 2
+  ações), **"Sinal de cautela"** (até 2 ações) e um aviso de que **não é
+  recomendação de investimento**.
+- **Economia:** se você clicar de novo com a mesma carteira e o mesmo período
+  dentro de **15 minutos**, o app **reaproveita** a análise e mostra
+  "gerada às HH:MM" — sem gastar de novo.
+- **Se algo faltar** (chave não configurada, chave errada, crédito acabou, IA
+  fora do ar), a janela mostra um **aviso amigável** — o resto do app continua
+  funcionando normalmente.
+
+O texto das instruções do analista fica no arquivo
+**`agente_analise_instrucoes.md`** — você pode ajustá-lo quando quiser, sem
+mexer no código.
+
+### Modelo e custo
+
+Usa o modelo **mais barato da Anthropic, o Claude Haiku 4.5**
+(US$ 1 por milhão de "tokens" de entrada, US$ 5 por milhão de saída).
+Cada análise custa **cerca de US$ 0,004 a US$ 0,01** — menos de um centavo de
+dólar, algo como **R$ 0,02 a R$ 0,05**. 200 análises no mês ≈ **US$ 1 a US$ 2**.
+
+### Configurar a chave de acesso
+
+A chave **nunca** fica no código nem vai para o GitHub. São dois lugares:
+
+**a) No seu computador** (só se você for rodar localmente): abra
+`.streamlit/secrets.toml` e adicione a linha:
+
+```toml
+ANTHROPIC_API_KEY = "sk-ant-...a-sua-chave..."
+```
+
+Salve (Ctrl+S) e atualize a página (F5).
+
+**b) No Railway** (o site publicado): painel do serviço → aba **Variables** →
+**+ New Variable** → nome `ANTHROPIC_API_KEY`, valor a sua chave → **Add** →
+**Deploy**. É o mesmo procedimento da senha `ADMIN_PASSWORD`.
+
+Para **criar** uma chave: entre em <https://console.anthropic.com>, adicione um
+crédito pequeno (ex.: US$ 5) em **Billing**, e gere a chave em
+**Settings → API keys**. Guarde a chave num lugar seguro — ela só aparece uma vez.
+
+---
+
 ## Problemas comuns e solução
 
 - **"python não é reconhecido" / "streamlit não é reconhecido"**

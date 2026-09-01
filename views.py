@@ -18,6 +18,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+import analise_ia
 import auth
 import database
 import market_data
@@ -204,6 +205,102 @@ def render_stocks_page(user) -> None:
         f"Última data disponível nos dados: {ultima_data}. "
         "Dados do Yahoo Finance, atualizados a cada 15 minutos."
     )
+
+    # --- botão flutuante "Análise do Dia" + janela com o texto da IA ---
+    _render_analise_do_dia(user, precos, resultado.nao_encontrados, rotulo_escolhido)
+
+
+# ---------------------------------------------------------------------------
+# "Análise do Dia" (botão flutuante + janela com o texto escrito pela IA)
+# ---------------------------------------------------------------------------
+# O botão fica preso no canto inferior direito da tela (position: fixed), sempre
+# visível mesmo rolando a página. A classe "st-key-botao_analise_dia" é criada
+# pelo Streamlit por causa do  st.container(key="botao_analise_dia")  abaixo.
+_CSS_BOTAO_ANALISE = """
+<style>
+.st-key-botao_analise_dia {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 999;
+    width: auto !important;
+}
+.st-key-botao_analise_dia button {
+    border-radius: 999px !important;
+    padding: 0.6rem 1.4rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28) !important;
+}
+@media (max-width: 640px) {
+    .st-key-botao_analise_dia { right: 12px; bottom: 12px; }
+}
+</style>
+"""
+
+
+@st.dialog("Análise do Dia", width="large")
+def _janela_analise_do_dia() -> None:
+    """Janela sobre a página: mostra a análise sendo escrita, o período e a hora."""
+    dados = st.session_state.get("analise_entrada")
+    if not dados:
+        st.info("Abra pela página Ações para gerar a análise.")
+        return
+
+    precos = dados["precos"]
+    nao_encontrados = dados["nao_encontrados"]
+    periodo_rotulo = dados["periodo"]
+    usuario_nome = dados["usuario_nome"]
+
+    st.caption(f"Carteira de **{usuario_nome}**  ·  período analisado: **{periodo_rotulo}**")
+
+    chave_cache = (dados["usuario_id"], tuple(sorted(precos.columns)), periodo_rotulo)
+    guardada = st.session_state.get("analise_guardada")
+    agora = analise_ia.agora_brasil()
+    reaproveitar = (
+        isinstance(guardada, dict)
+        and guardada.get("chave") == chave_cache
+        and (agora - guardada["quando"]).total_seconds() < 15 * 60
+    )
+
+    if reaproveitar:
+        st.markdown(guardada["texto"])
+        st.info(
+            f"Análise gerada às {guardada['hora']} — reaproveitada. "
+            "Uma nova é feita só depois de 15 minutos."
+        )
+    else:
+        resumo = analise_ia.montar_resumo(
+            precos, nao_encontrados, periodo_rotulo, usuario_nome, agora
+        )
+        estado = {"ok": False}
+        with st.spinner("Lendo os números da sua carteira..."):
+            texto = st.write_stream(analise_ia.gerar_analise(resumo, estado))
+        if estado["ok"]:
+            st.session_state["analise_guardada"] = {
+                "chave": chave_cache,
+                "texto": texto,
+                "quando": agora,
+                "hora": agora.strftime("%H:%M"),
+            }
+            st.caption(f"Análise gerada às {agora.strftime('%H:%M')}.")
+
+    if st.button("Fechar", key="fechar_analise_dia", use_container_width=True):
+        st.session_state.pop("analise_entrada", None)
+        st.rerun()
+
+
+def _render_analise_do_dia(user, precos, nao_encontrados, periodo_rotulo) -> None:
+    st.markdown(_CSS_BOTAO_ANALISE, unsafe_allow_html=True)
+    with st.container(key="botao_analise_dia"):
+        if st.button("💡 Análise do Dia", key="abrir_analise_dia", type="primary"):
+            st.session_state["analise_entrada"] = {
+                "usuario_id": user["id"],
+                "usuario_nome": user["full_name"],
+                "precos": precos,
+                "nao_encontrados": list(nao_encontrados or []),
+                "periodo": periodo_rotulo,
+            }
+            _janela_analise_do_dia()
 
 
 # ---------------------------------------------------------------------------
