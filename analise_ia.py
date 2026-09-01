@@ -129,18 +129,23 @@ def _nome_empresa(codigo: str) -> str:
     return _NOMES_EMPRESAS.get(codigo.upper(), codigo.upper())
 
 
+def _limpar(valor) -> str:
+    """Tira espaços, quebras de linha e caracteres invisíveis das pontas."""
+    return (valor or "").strip().strip(" \t\r\n ​﻿")
+
+
 def _ler_chave() -> str:
     """Lê ANTHROPIC_API_KEY de .streamlit/secrets.toml ou da variável de ambiente."""
     try:
         import streamlit as st
 
         if "ANTHROPIC_API_KEY" in st.secrets:
-            valor = str(st.secrets["ANTHROPIC_API_KEY"]).strip()
+            valor = _limpar(str(st.secrets["ANTHROPIC_API_KEY"]))
             if valor:
                 return valor
     except Exception:
         pass
-    return (os.environ.get("ANTHROPIC_API_KEY") or "").strip()
+    return _limpar(os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def chave_configurada() -> bool:

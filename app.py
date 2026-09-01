@@ -49,11 +49,23 @@ def _garantir_streamlit_run() -> None:
 
 _garantir_streamlit_run()
 
+import analise_ia
 import auth
 import database
 import views
 
 st.set_page_config(page_title="Painel de Ações", page_icon="📈", layout="wide")
+
+# --- DIAGNÓSTICO TEMPORÁRIO (remover depois de confirmar a chave no servidor) ---
+try:
+    _k = analise_ia._ler_chave()
+    print(
+        f"[diag chave] ANTHROPIC_API_KEY: {'presente' if _k else 'AUSENTE'} | "
+        f"{len(_k)} caracteres | prefixo {_k[:14] or '-'} | sufixo {_k[-6:] or '-'}",
+        flush=True,
+    )
+except Exception as _e:  # pragma: no cover
+    print(f"[diag chave] erro ao ler a chave: {_e!r}", flush=True)
 
 # 1) Banco de dados pronto.
 database.init_db()
